@@ -1,4 +1,31 @@
-const express = require("express");
+app.post("/api/chat", async (req, res) => {
+   try {
+      const { message } = req.body;
+
+      const completion = await openai.chat.completions.create({
+         model: "gpt-4o-mini",
+         messages: [
+           { role: "system", content: SYSTEM_PROMPT },
+           { role: "user", content: message }
+         ]
+      });
+
+      res.json({ reply: completion.choices[0].message.content });
+   } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error generating reply" });
+   }
+});
+
+const PORT = process.env.PORT || 3001;
+
+// Export app for Vercel
+module.exports = app;
+
+// Only start a local server if run directly
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Chat API running on port ${PORT}`));
+}const express = require("express");
 const cors = require("cors");
 const { OpenAI } = require("openai");
 require("dotenv").config();
