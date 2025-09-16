@@ -57,6 +57,44 @@ module.exports = async (req, res) => {
 
     const data = await oaiRes.json();
     const reply = data?.choices?.[0]?.message?.content || "Sorry, I had trouble responding.";
+    // --- Lead capture: detect email/phone in the user's message and send to /api/lead (non-blocking) ---
+    try {
+      const text = (userMessage || "");
+      const emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      const phoneMatch = text.match(/(?:(?:\+1[\s.-]?)?)\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+
+      const email = emailMatch ? emailMatch[0] : null;
+      const phone = phoneMatch ? phoneMatch[0] : null;
+
+      // Try to pull a name if user wrote "my name is ..." or "name ..."
+      let name = null;
+      const name1 = text.match(/my name is\s+([A-Za-z][A-Za-z\s\-']{1,40})/i);
+      const name2 = text.match(/^\s*name\s+([A-Za-z][A-Za-z\s\-']{1,40})/im);
+      if (name1) name = name1[1].trim();
+      else if (name2) name = name2[1].trim();
+
+      if (email || phone) {
+        const leadPayload = {
+          name,
+          email,
+          phone,
+          // You can add more lightweight parses later (date/city/guests/budget/services)
+          message: text
+        };
+
+        // Build absolute URL for serverless call
+        const base =
+          (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : "https://masti-chat-jade.vercel.app");
+        await fetch(\`\${base}/api/lead\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(leadPayload)
+        }).catch(() => {});
+      }
+    } catch (_e) {
+      // Never block the chat reply if lead capture fails
+    }
+    // --- end lead capture ---
     return res.status(200).json({ reply });
   } catch (err) {
     return res.status(500).json({
