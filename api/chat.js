@@ -27,6 +27,8 @@ module.exports = async (req, res) => {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
     const userMessage = ((body && body.message) || "").toString().slice(0, 2000);
     if (!userMessage) return res.status(400).json({ error: "Missing message" });
+    if (userMessage === "__healthcheck__") return res.status(200).json({ reply: "ok" });
+
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "Server missing OPENAI_API_KEY" });
