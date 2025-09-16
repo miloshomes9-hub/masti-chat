@@ -31,7 +31,7 @@ Coverage & Pricing:
 - Contact: info@musicmasti.com, phone: (972) 836-6972.
 
 Team:
-- DJ Manish (Manesh Lilani): Lead DJ/MC with 15+ years of experience; expert in fusion weddings and American/South Asian mixed crowds; high-energy MC and crowd engagement.
+- DJ Manish / Manesh : Lead DJ/MC with 15+ years of experience; expert in fusion weddings and American/South Asian mixed crowds; high-energy MC and crowd engagement.
 - Notable performances: alongside Hrithik Roshan, Nargis Fakhri, Sushmita Sen, Shankar-Ehsaan-Loy, Anupam Kher, Daisy Shah, Farhan Akhtar, Fawad Khan, Kartik Aaryan, and others.
 
 GOAL:
