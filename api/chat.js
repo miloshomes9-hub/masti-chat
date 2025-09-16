@@ -1,9 +1,12 @@
-export default async function handler(req, res) {
-  // --- CORS ---
-  const ALLOWED_ORIGINS = [
-    "https://www.musicmasti.com",
-    "https://musicmasti.com"
-  ];
+// api/chat.js  (CommonJS, Vercel Serverless Function)
+
+// ---- CORS ----
+const ALLOWED_ORIGINS = [
+  "https://www.musicmasti.com",
+  "https://musicmasti.com",
+];
+
+function setCors(req, res) {
   const origin = req.headers.origin;
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -12,24 +15,10 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
+}
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
-  const userMessage = req.body.message || "";
-
-  // Healthcheck shortcut
-  if (userMessage === "__healthcheck__") {
-    return res.status(200).json({ reply: "ok" });
-  }
-
-  // --- SYSTEM PROMPT ---
-  const SYSTEM_PROMPT = `You are the front-desk AI for Music Masti Magic (Bollywood/Desi Wedding DJ, MC, lighting, LED wall, dhol).
+// ---- Prompt ----
+const SYSTEM_PROMPT = `You are the front-desk AI for Music Masti Magic (Bollywood/Desi Wedding DJ, MC, lighting, LED wall, dhol).
 
 Positioning & Specialties:
 - We specialize in fusion and mixed-culture weddings: South Asian × American/Western, interfaith, and luxury multi-day events (sangeet, baraat, ceremony, reception).
@@ -38,7 +27,7 @@ Positioning & Specialties:
 
 Coverage & Pricing:
 - Coverage: Dallas, Austin, Houston (travel nationwide).
-- Typical price ranges: 4-hr DJ+MC $1200–$2000; uplighting $200–$400; LED wall varies; travel fee after 30 miles.
+- Typical price ranges: 4-hr DJ+MC $1500–$2000; uplighting $250–$500; LED wall varies; travel fee after 30 miles.
 - Contact: info@musicmasti.com, phone: (972) 836-6972.
 
 Team:
@@ -56,37 +45,66 @@ RULES:
 - Keep answers brief and friendly; emphasize our fusion/mixed-wedding expertise when relevant.
 - If unsure, say we’ll confirm by email/phone and provide: info@musicmasti.com, (972) 836-6972.`;
 
+// ---- Helper: parse JSON body safely ----
+function getJsonBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  try {
+    return req.body ? JSON.parse(req.body) : {};
+  } catch {
+    return {};
+  }
+}
+
+// ---- Handler (CommonJS export) ----
+module.exports = async function handler(req, res) {
+  setCors(req, res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  const body = getJsonBody(req);
+  const userMessage = (body && body.message) ? String(body.message) : "";
+
+  // Healthcheck
+  if (userMessage === "__healthcheck__") {
+    return res.status(200).json({ reply: "ok" });
+  }
+
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage }
+          { role: "user", content: userMessage },
         ],
-        temperature: 0.6
-      })
+        temperature: 0.6,
+      }),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err);
+      const errText = await response.text();
+      throw new Error(errText);
     }
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content?.trim();
+    const reply = data?.choices?.[0]?.message?.content?.trim() || "Sorry, I had trouble responding.";
 
-    return res.status(200).json({ reply: reply || "Sorry, I had trouble responding." });
+    return res.status(200).json({ reply });
   } catch (err) {
-    console.error("Chat API error:", err);
+    console.error("Chat API error:", err?.message || err);
     return res.status(500).json({
       error: "Server error",
-      detail: err?.message || String(err)
+      detail: err?.message || String(err),
     });
   }
-}
+};
